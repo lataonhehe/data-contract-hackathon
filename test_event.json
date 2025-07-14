@@ -1,0 +1,12 @@
+{
+  "body": "{\"user\": \"john.doe@example.com\", \"request\": \"Create a data contract for sharing customer information between a retail company and a marketing agency. The contract should include customer name, email, purchase history, and preferences. Ensure data is encrypted and only used for targeted marketing campaigns.\"}",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "httpMethod": "POST",
+  "path": "/contracts",
+  "requestContext": {
+    "requestId": "test-contract-request-id",
+    "stage": "dev"
+  }
+} 
