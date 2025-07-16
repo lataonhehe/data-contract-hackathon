@@ -56,6 +56,22 @@ functions:
           path: /contracts
           method: post
           cors: true
+      - http:
+          path: /contracts
+          method: get
+          cors: true
+      - http:
+          path: /contracts/{contract_id}
+          method: get
+          cors: true
+      - http:
+          path: /contracts/{contract_id}
+          method: put
+          cors: true
+      - http:
+          path: /contracts/{contract_id}
+          method: delete
+          cors: true
     timeout: 30
     memorySize: 512
     environment:

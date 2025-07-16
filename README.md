@@ -361,3 +361,27 @@ For issues and questions:
 2. Review CloudWatch logs
 3. Test with the provided test scripts
 4. Contact the development team 
+
+## Contract CRUD API
+
+The Lambda function now supports full CRUD operations for contracts via API Gateway:
+
+### Create Contract
+- **POST** `/contract`
+- **Body:** `{ "user": "user@email.com", "request": "Describe your contract..." }`
+- **Response:** `{ "contract_id": ..., "status": ..., "s3_path": ..., "yaml": ..., "message": ... }`
+
+### Read Contract
+- **GET** `/contract/{contract_id}`
+- **Response:** `{ "contract_id": ..., "owner": ..., "created_time": ..., "status": ..., "s3_path": ..., "yaml": ... }`
+
+### Update Contract
+- **PUT** `/contract/{contract_id}`
+- **Body:** `{ "status": "NEW_STATUS", "yaml": "...optional new YAML..." }`
+- **Response:** Updated contract object
+
+### Delete Contract
+- **DELETE** `/contract/{contract_id}`
+- **Response:** `{ "message": "Contract {contract_id} deleted successfully" }`
+
+**Note:** All responses are JSON. Errors return an `error` and `message` field. 
