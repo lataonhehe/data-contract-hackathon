@@ -31,9 +31,21 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return create_response(200, {"message": "OK"})
 
         method = event.get('httpMethod')
-        path = event.get('resource') or event.get('path')
+        
+        # More robust path handling for API Gateway
+        path = event.get('resource') or event.get('path', '')
+        # Remove stage prefix if present (e.g., /dev/contracts -> /contracts)
+        if path.startswith('/dev/'):
+            path = path[4:]  # Remove /dev/
+        elif path.startswith('/prod/'):
+            path = path[6:]  # Remove /prod/
+        elif path.startswith('/staging/'):
+            path = path[9:]  # Remove /staging/
+            
         path_params = event.get('pathParameters') or {}
         contract_id = path_params.get('contract_id') if path_params else None
+
+        logger.info(f"Processed path: {path}, method: {method}, contract_id: {contract_id}")
 
         # CREATE (POST /contracts)
         if method == 'POST' and path == '/contracts':
@@ -56,6 +68,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_delete_contract(contract_id)
 
         # If no route matched
+        logger.warning(f"No matching route found for method: {method}, path: {path}")
         return create_error_response(404, "Not Found", "Invalid route or method")
 
     except Exception as e:
