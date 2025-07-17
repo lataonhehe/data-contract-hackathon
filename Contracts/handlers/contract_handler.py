@@ -16,6 +16,43 @@ from utils.aws_utils import (
 from utils.validators import validate_input
 from utils.response_utils import create_response, create_error_response
 
+def handle_generate_contract(event):
+    """
+    Handle contract generation (without saving)
+    
+    Args:
+        event: API Gateway event
+        
+    Returns:
+        API Gateway response with generated contract content
+    """
+    try:
+        body = event.get('body', '{}')
+        if isinstance(body, str):
+            body = json.loads(body)
+        
+        description = body.get('description')
+        if not description:
+            return create_error_response(400, "Bad Request", "Description is required")
+        
+        logger.info(f"Generating contract for description: {description}")
+        
+        # Generate contract with Bedrock
+        yaml_content = generate_contract_with_bedrock(description)
+        
+        response_body = {
+            "content": yaml_content,
+            "message": "Contract generated successfully"
+        }
+        
+        logger.info("Contract generation completed")
+        return create_response(200, response_body)
+        
+    except Exception as e:
+        logger.error(f"Contract generation failed: {str(e)}")
+        return create_error_response(500, "Contract Generation Failed", str(e))
+
+
 def handle_create_contract(event):
     """
     Handle contract creation

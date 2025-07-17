@@ -9,7 +9,8 @@ from handlers.contract_handler import (
     handle_get_all_contracts,
     handle_get_contract,
     handle_update_contract,
-    handle_delete_contract
+    handle_delete_contract,
+    handle_generate_contract
 )
 from utils.response_utils import create_response, create_error_response
 
@@ -46,6 +47,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         contract_id = path_params.get('contract_id') if path_params else None
 
         logger.info(f"Processed path: {path}, method: {method}, contract_id: {contract_id}")
+
+        # GENERATE (POST /contracts/generate)
+        if method == 'POST' and path == '/generate':
+            return handle_generate_contract(event)
 
         # CREATE (POST /contracts)
         if method == 'POST' and path == '/contracts':

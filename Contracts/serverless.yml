@@ -72,6 +72,10 @@ functions:
           path: /contracts/{contract_id}
           method: delete
           cors: true
+      - http:
+          path: /generate
+          method: post
+          cors: true
     timeout: 30
     memorySize: 512
     environment:

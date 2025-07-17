@@ -22,12 +22,20 @@ def validate_input(event):
         if isinstance(body, str):
             body = json.loads(body)
         
+        # Check for nested input_data structure first
+        if 'input_data' in body:
+            input_data = body['input_data']
+            user = input_data.get('user')
+            request = input_data.get('request')
+        else:
+            # Fallback to direct fields for backward compatibility
+            user = body.get('user')
+            request = body.get('request')
+        
         # Validate required fields
-        user = body.get('user')
         if not user:
             raise ValueError("Missing required field: user")
         
-        request = body.get('request')
         if not request:
             raise ValueError("Missing required field: request")
         
