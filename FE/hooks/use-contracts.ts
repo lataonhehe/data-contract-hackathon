@@ -60,7 +60,7 @@ export function useContracts() {
     }
   }
 
-  const createContract = async (contractData: { user: string; request: string; generated_content?: string }) => {
+  const createContract = async (contractData: { user: string; request: string }) => {
     setLoading(true)
     try {
       if (api.utils.isApiConfigured()) {

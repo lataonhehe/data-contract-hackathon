@@ -6,19 +6,25 @@ import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { YAMLViewer } from "@/components/ui/yaml-viewer"
-import { YAMLContractAnalyzer } from "@/components/ui/yaml-contract-analyzer"
 import { useContracts } from "@/hooks/use-contracts"
-import { Edit, Trash2, ArrowLeft, Database, Shield, BarChart3 } from "lucide-react"
+import { Edit, Trash2, ArrowLeft, Database, Shield } from "lucide-react"
 import type { Contract } from "@/types/contract"
+import { useEffect } from "react"
 
 export default function ViewContractPage() {
   const params = useParams()
   const router = useRouter()
-  const { getContract, deleteContract } = useContracts()
+  const { getContract, fetchContractById, deleteContract } = useContracts()
 
   const contractId = params.id as string
   const contract = getContract(contractId)
+
+  // Fetch contract from backend if not in state
+  useEffect(() => {
+    if (!contract && contractId) {
+      fetchContractById(contractId)
+    }
+  }, [contract, contractId, fetchContractById])
 
   if (!contract) {
     return (
@@ -159,17 +165,16 @@ export default function ViewContractPage() {
 
             {/* Contract Content */}
             <div className="lg:col-span-2">
-              <div className="space-y-6">
-                <YAMLViewer 
-                  content={contract.content} 
-                  title="Contract Content"
-                  showActions={true}
-                />
-                
-                <YAMLContractAnalyzer 
-                  content={contract.content}
-                />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Contract Content</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted p-6 rounded-lg">
+                    <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto">{contract.content}</pre>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

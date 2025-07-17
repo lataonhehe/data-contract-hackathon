@@ -38,7 +38,7 @@ except Exception as e:
     dynamodb_client = None
 
 # Constants
-S3_BUCKET = 'gencontract-data'
+S3_BUCKET = 'data-contract-vphackathon'
 DYNAMODB_TABLE = 'ContractMetadata'
 BEDROCK_MODEL_ID = 'anthropic.claude-3-sonnet-20240229-v1:0'
 
@@ -90,6 +90,6 @@ Given a user request describing a data asset, generate a complete and valid YAML
 - Do not include explanations or comments.  
 - Ensure the output is suitable for automated contract enforcement and version control.  
 - If any field is unknown, use a placeholder like `"<TBD>"`.
-
+- Only English.
 ---
 """

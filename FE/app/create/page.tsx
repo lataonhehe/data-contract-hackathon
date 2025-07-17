@@ -1,16 +1,15 @@
 "use client"
 
-import React, { useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Navigation } from "../../components/navigation"
-import { Button } from "../../components/ui/button"
-import { Input } from "../../components/ui/input" 
-import { Label } from "../../components/ui/label"
-import { Textarea } from "../../components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
-import { YAMLViewer } from "../../components/ui/yaml-viewer"
-import { useContracts } from "../../hooks/use-contracts"
-import { useToast } from "../../hooks/use-toast"
+import { Navigation } from "@/components/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useContracts } from "@/hooks/use-contracts"
+import { useToast } from "@/hooks/use-toast"
 import { Loader2, Wand2, Save } from "lucide-react"
 
 export default function CreateContractPage() {
@@ -64,21 +63,11 @@ export default function CreateContractPage() {
       return
     }
 
-    if (!generatedContent) {
-      toast({
-        title: "Error",
-        description: "Please generate a contract before saving.",
-        variant: "destructive",
-      })
-      return
-    }
-
     setIsSaving(true)
     try {
       const newContract = await createContract({
         user: userEmail,
         request: description,
-        generated_content: generatedContent,
       })
 
       toast({
@@ -107,7 +96,7 @@ export default function CreateContractPage() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Create New Contract</h1>
             <p className="text-muted-foreground">
-              Describe your data-sharing needs in natural language, generate a contract preview, and save it when you're satisfied.
+              Describe your data-sharing needs in natural language and let AI generate a smart contract for you.
             </p>
           </div>
 
@@ -172,10 +161,10 @@ export default function CreateContractPage() {
                         Creating Contract...
                       </>
                     ) : (
-                                          <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Contract
-                    </>
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Create Contract
+                      </>
                     )}
                   </Button>
                 )}
@@ -183,26 +172,26 @@ export default function CreateContractPage() {
             </Card>
 
             {/* Generated Contract Preview */}
-            {!generatedContent ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Generated Contract</CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>Generated Contract</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!generatedContent ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Wand2 className="mx-auto h-12 w-12 mb-4 opacity-50" />
                     <p>Generated contract will appear here</p>
                     <p className="text-sm mt-2">Provide a description and click "Generate Contract" to get started</p>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <YAMLViewer 
-                content={generatedContent} 
-                title="Generated Contract Preview"
-                showActions={false}
-              />
-            )}
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-muted p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto">{generatedContent}</pre>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>

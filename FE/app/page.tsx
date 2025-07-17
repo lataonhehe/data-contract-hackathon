@@ -9,7 +9,7 @@ const features = [
     title: "Create Contract",
     description: "Generate smart contracts from natural language descriptions",
     icon: Plus,
-    href: "/contracts",
+    href: "/create",
     color: "text-green-600",
   },
   {

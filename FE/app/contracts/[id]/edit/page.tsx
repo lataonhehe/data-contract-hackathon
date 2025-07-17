@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { YAMLViewer } from "@/components/ui/yaml-viewer"
-import { YAMLEditor } from "@/components/ui/yaml-editor"
 import { useContracts } from "@/hooks/use-contracts"
 import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, Save, Loader2, Wand2 } from "lucide-react"
@@ -20,11 +18,18 @@ import type { Contract } from "@/types/contract"
 export default function EditContractPage() {
   const params = useParams()
   const router = useRouter()
-  const { getContract, updateContract, generateContract } = useContracts()
+  const { getContract, fetchContractById, updateContract, generateContract } = useContracts()
   const { toast } = useToast()
 
   const contractId = params.id as string
   const contract = getContract(contractId)
+
+  // Fetch contract from backend if not in state
+  useEffect(() => {
+    if (!contract && contractId) {
+      fetchContractById(contractId)
+    }
+  }, [contract, contractId, fetchContractById])
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -247,14 +252,26 @@ export default function EditContractPage() {
             </Card>
 
             {/* Content Section */}
-            <YAMLEditor
-              value={content}
-              onChange={setContent}
-              title="Contract Content"
-              showPreview={true}
-              showAnalyzer={true}
-              placeholder="Enter your contract YAML content here..."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle>Contract Content</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label htmlFor="content">
+                    Content <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="content"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Contract content in YAML or markdown format"
+                    rows={20}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
