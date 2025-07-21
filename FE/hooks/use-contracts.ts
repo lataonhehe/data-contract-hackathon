@@ -60,14 +60,25 @@ export function useContracts() {
     }
   }
 
-  const createContract = async (contractData: { user: string; request: string }) => {
+  const createContract = async (contractData: { user: string; request: string; content?: string }) => {
     setLoading(true)
     try {
       if (api.utils.isApiConfigured()) {
-        // Use real API
-        console.log("Creating contract via API:", contractData)
-        const newContract = await api.contracts.create(contractData)
-        console.log("Contract created:", newContract)
+        let newContract
+        if (contractData.content) {
+          // Save pre-generated contract
+          newContract = await api.contracts.saveGenerated({
+            user: contractData.user,
+            request: contractData.request,
+            content: contractData.content,
+          })
+        } else {
+          // Use real API to generate and save
+          newContract = await api.contracts.create({
+            user: contractData.user,
+            request: contractData.request,
+          })
+        }
         setContracts((prev) => [...prev, newContract])
         return newContract
       } else {
@@ -78,7 +89,7 @@ export function useContracts() {
           description: contractData.request,
           owner: contractData.user,
           status: "DRAFT",
-          content: generateMockContract(contractData.request),
+          content: contractData.content || generateMockContract(contractData.request),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }
@@ -210,6 +221,35 @@ export function useContracts() {
     }
   }
 
+  const generateContractStream = async (
+    description: string,
+    onChunk: (chunk: string) => void,
+    onComplete: (fullContent: string) => void,
+    onError: (error: string) => void
+  ) => {
+    setLoading(true)
+    try {
+      if (api.utils.isApiConfigured()) {
+        await api.contracts.generateStream(description, onChunk, onComplete, onError)
+      } else {
+        // Fallback to mock streaming
+        let fullContent = ""
+        for (let i = 0; i < 5; i++) {
+          const chunk = `# Mock contract chunk ${i + 1}\n`
+          fullContent += chunk
+          onChunk(chunk)
+          await new Promise((resolve) => setTimeout(resolve, 400))
+        }
+        onComplete(fullContent)
+      }
+    } catch (err) {
+      setError(api.utils.handleError(err))
+      onError("Streaming failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const queryAssistant = async (question: string): Promise<QueryResponse> => {
     setLoading(true)
     try {
@@ -260,6 +300,7 @@ export function useContracts() {
     getContract,
     fetchContractById,
     generateContract,
+    generateContractStream,
     queryAssistant,
 
     // Utility methods

@@ -4,7 +4,7 @@ import uuid
 from typing import Dict, Any
 
 from config import logger
-from services.bedrock_service import generate_contract_with_bedrock
+from services.bedrock_service import generate_contract_with_bedrock, stream_contract_with_bedrock
 from utils.aws_utils import (
     save_yaml_to_s3, 
     save_metadata_to_dynamodb, 
@@ -51,6 +51,30 @@ def handle_generate_contract(event):
     except Exception as e:
         logger.error(f"Contract generation failed: {str(e)}")
         return create_error_response(500, "Contract Generation Failed", str(e))
+
+
+def handle_stream_generate_contract(event):
+    """
+    Handle streaming contract generation (without saving)
+    Args:
+        event: API Gateway event
+    Yields:
+        Chunks of generated contract content
+    """
+    try:
+        body = event.get('body', '{}')
+        if isinstance(body, str):
+            body = json.loads(body)
+        description = body.get('description')
+        if not description:
+            yield json.dumps({"error": "Description is required"})
+            return
+        logger.info(f"Streaming contract generation for description: {description}")
+        for chunk in stream_contract_with_bedrock(description):
+            yield chunk
+    except Exception as e:
+        logger.error(f"Streaming contract generation failed: {str(e)}")
+        yield json.dumps({"error": str(e)})
 
 
 def handle_create_contract(event):
@@ -175,3 +199,40 @@ def handle_delete_contract(contract_id: str):
     except Exception as e:
         logger.error(f"Contract delete failed: {str(e)}")
         return create_error_response(400, "Delete Failed", str(e)) 
+
+
+def handle_save_generated_contract(event):
+    """
+    Save a contract with provided YAML/content and metadata (no generation).
+    Args:
+        event: API Gateway event
+    Returns:
+        API Gateway response
+    """
+    try:
+        body = event.get('body', '{}')
+        if isinstance(body, str):
+            body = json.loads(body)
+        user = body.get('user')
+        request = body.get('request')
+        yaml_content = body.get('content') or body.get('yaml')
+        if not user or not request or not yaml_content:
+            return create_error_response(400, "Bad Request", "user, request, and content are required")
+        contract_id = str(uuid.uuid4())
+        logger.info(f"Saving provided contract ID: {contract_id}")
+        # Save to S3
+        s3_path = save_yaml_to_s3(contract_id, yaml_content)
+        # Save metadata to DynamoDB
+        save_metadata_to_dynamodb(contract_id, user, s3_path)
+        response_body = {
+            "contract_id": contract_id,
+            "status": "DRAFT",
+            "s3_path": s3_path,
+            "yaml": yaml_content,
+            "message": "Contract saved successfully"
+        }
+        logger.info(f"Contract saved: {contract_id}")
+        return create_response(200, response_body)
+    except Exception as e:
+        logger.error(f"Contract save failed: {str(e)}")
+        return create_error_response(500, "Contract Save Failed", str(e)) 

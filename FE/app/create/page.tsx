@@ -11,10 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useContracts } from "@/hooks/use-contracts"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Wand2, Save } from "lucide-react"
+import { useRef } from "react"
 
 export default function CreateContractPage() {
   const router = useRouter()
-  const { createContract, generateContract } = useContracts()
+  const { createContract, generateContractStream } = useContracts()
   const { toast } = useToast()
 
   const [userEmail, setUserEmail] = useState("")
@@ -22,6 +23,10 @@ export default function CreateContractPage() {
   const [generatedContent, setGeneratedContent] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [streamError, setStreamError] = useState<string | null>(null)
+  const [agreed, setAgreed] = useState(false)
+  const [editableContent, setEditableContent] = useState("")
+  const abortRef = useRef<{ aborted: boolean }>({ aborted: false })
 
   const handleGenerate = async () => {
     if (!description.trim()) {
@@ -34,23 +39,54 @@ export default function CreateContractPage() {
     }
 
     setIsGenerating(true)
+    setGeneratedContent("")
+    setEditableContent("")
+    setStreamError(null)
+    abortRef.current.aborted = false
     try {
-      const content = await generateContract(description)
-      setGeneratedContent(content)
-
-      toast({
-        title: "Success",
-        description: "Contract generated successfully! Review and save when ready.",
-      })
+      await generateContractStream(
+        description,
+        (chunk) => {
+          if (!abortRef.current.aborted) {
+            setGeneratedContent((prev) => prev + chunk)
+            setEditableContent((prev) => prev + chunk)
+          }
+        },
+        (fullContent) => {
+          if (!abortRef.current.aborted) {
+            setGeneratedContent(fullContent)
+            setEditableContent(fullContent)
+            setIsGenerating(false)
+            toast({
+              title: "Success",
+              description: "Contract generated successfully! Review, edit, and save when ready.",
+            })
+          }
+        },
+        (error) => {
+          setStreamError(error)
+          setIsGenerating(false)
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          })
+        }
+      )
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate contract. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
+      setStreamError("Streaming failed")
       setIsGenerating(false)
     }
+  }
+
+  const handleCancelStream = () => {
+    abortRef.current.aborted = true
+    setIsGenerating(false)
+    toast({
+      title: "Cancelled",
+      description: "Contract generation was cancelled.",
+      variant: "destructive",
+    })
   }
 
   const handleSave = async () => {
@@ -68,6 +104,7 @@ export default function CreateContractPage() {
       const newContract = await createContract({
         user: userEmail,
         request: description,
+        content: editableContent,
       })
 
       toast({
@@ -108,19 +145,6 @@ export default function CreateContractPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="userEmail">
-                    Your Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="userEmail"
-                    placeholder="Enter your email address"
-                    type="email"
-                    value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="description">
                     Data-Sharing Description <span className="text-red-500">*</span>
                   </Label>
@@ -131,14 +155,17 @@ export default function CreateContractPage() {
                     onChange={(e) => setDescription(e.target.value)}
                     rows={6}
                     className="resize-none"
+                    disabled={isGenerating || !!generatedContent}
                   />
                 </div>
-
-                <Button onClick={handleGenerate} disabled={isGenerating || !description.trim()} className="w-full">
+                <Button onClick={handleGenerate} disabled={isGenerating || !description.trim() || !!generatedContent} className="w-full">
                   {isGenerating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Generating Contract...
+                      <Button onClick={handleCancelStream} variant="outline" className="ml-4" type="button">
+                        Cancel
+                      </Button>
                     </>
                   ) : (
                     <>
@@ -147,26 +174,51 @@ export default function CreateContractPage() {
                     </>
                   )}
                 </Button>
-
+                {/* Agreement and email input shown only after generation */}
                 {generatedContent && (
-                  <Button
-                    onClick={handleSave}
-                    disabled={isSaving || !userEmail.trim() || !description.trim()}
-                    className="w-full"
-                    variant="default"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating Contract...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Create Contract
-                      </>
-                    )}
-                  </Button>
+                  <>
+                    <div className="flex items-center space-x-2 mt-4">
+                      <input
+                        id="agree"
+                        type="checkbox"
+                        checked={agreed}
+                        onChange={e => setAgreed(e.target.checked)}
+                        className="form-checkbox h-4 w-4 text-primary"
+                      />
+                      <Label htmlFor="agree" className="text-sm">I have reviewed and agree to the generated contract</Label>
+                    </div>
+                    <div className="space-y-2 mt-2">
+                      <Label htmlFor="userEmail">
+                        Your Email <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="userEmail"
+                        placeholder="Enter your email address"
+                        type="email"
+                        value={userEmail}
+                        onChange={(e) => setUserEmail(e.target.value)}
+                        disabled={!agreed}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving || !userEmail.trim() || !description.trim() || !agreed}
+                      className="w-full mt-2"
+                      variant="default"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Contract...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Create Contract
+                        </>
+                      )}
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -186,8 +238,14 @@ export default function CreateContractPage() {
                 ) : (
                   <div className="space-y-4">
                     <div className="bg-muted p-4 rounded-lg">
-                      <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto">{generatedContent}</pre>
+                      <Textarea
+                        value={editableContent}
+                        onChange={e => setEditableContent(e.target.value)}
+                        rows={20}
+                        className="font-mono text-sm w-full"
+                      />
                     </div>
+                    {streamError && <div className="text-red-500 text-sm">{streamError}</div>}
                   </div>
                 )}
               </CardContent>

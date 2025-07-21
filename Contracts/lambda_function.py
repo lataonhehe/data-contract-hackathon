@@ -10,7 +10,8 @@ from handlers.contract_handler import (
     handle_get_contract,
     handle_update_contract,
     handle_delete_contract,
-    handle_generate_contract
+    handle_generate_contract,
+    handle_stream_generate_contract
 )
 from utils.response_utils import create_response, create_error_response
 
@@ -71,6 +72,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # DELETE (DELETE /contracts/{contract_id})
         if method == 'DELETE' and path == '/contracts/{contract_id}' and contract_id:
             return handle_delete_contract(contract_id)
+
+        # STREAM GENERATE (POST /contracts/stream-generate)
+        if method == 'POST' and path == '/contracts/stream-generate':
+            # This is a generator for streaming responses
+            return handle_stream_generate_contract(event)
 
         # If no route matched
         logger.warning(f"No matching route found for method: {method}, path: {path}")

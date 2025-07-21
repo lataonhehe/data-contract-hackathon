@@ -76,6 +76,10 @@ functions:
           path: /generate
           method: post
           cors: true
+      - http:
+          path: /contracts/stream-generate
+          method: post
+          cors: true
     timeout: 30
     memorySize: 512
     environment:

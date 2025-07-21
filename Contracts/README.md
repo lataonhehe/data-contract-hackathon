@@ -385,3 +385,11 @@ The Lambda function now supports full CRUD operations for contracts via API Gate
 - **Response:** `{ "message": "Contract {contract_id} deleted successfully" }`
 
 **Note:** All responses are JSON. Errors return an `error` and `message` field. 
+
+## FastAPI Backend (Local Development)
+
+A new folder `fastapi_backend/` will be created to provide a FastAPI-based backend with the same contract CRUD and generation functionality as the AWS Lambda backend. This allows for local development, testing, and running the backend without AWS Lambda or API Gateway.
+
+- All endpoints and logic will mirror the Lambda implementation.
+- Uses the same service and utility modules for contract generation, S3, and DynamoDB.
+- Run locally with `uvicorn`. 

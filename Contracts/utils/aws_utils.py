@@ -215,17 +215,17 @@ def get_contract(contract_id: str):
 
 def update_contract(contract_id: str, updates):
     """
-    Update contract metadata in DynamoDB and/or YAML in S3
+    Update contract metadata in DynamoDB and/or YAML in S3.
     Args:
-        contract_id: Unique contract identifier
-        updates: Dict with fields to update (e.g., status, yaml)
+        contract_id: Unique contract identifier.
+        updates: Dict with fields to update (e.g., {"status": "active", "yaml": "..."}).
     Returns:
-        Updated contract metadata and YAML
+        Updated contract metadata and YAML.
     Raises:
-        Exception: If update fails
+        Exception: If update fails.
     """
     try:
-        # Update YAML in S3 if provided
+        # --- Step 1: Update YAML in S3 if provided ---
         if 'yaml' in updates:
             s3_key = f"contracts/{contract_id}.yaml"
             s3_client.put_object(
@@ -234,27 +234,62 @@ def update_contract(contract_id: str, updates):
                 Body=updates['yaml'],
                 ContentType='application/x-yaml'
             )
-        # Update metadata in DynamoDB
+
+        # --- Step 2: Update metadata in DynamoDB ---
         update_expr = []
         expr_attr_values = {}
+        expr_attr_names = {}
+
+        reserved_keywords = set([
+            'STATUS', 'ACTION', 'ADD', 'NAME', 'TYPE', 'VALUE', 'USER', 'DATE', 'TIME', 'TEXT', 'NUMBER'
+        ])  # short list; add more if needed
+
         for k, v in updates.items():
             if k == 'yaml':
-                continue  # YAML is not stored in DynamoDB
-            update_expr.append(f"{k} = :{k}")
-            expr_attr_values[f":{k}"] = v
+                continue  # YAML is handled via S3 only
+
+            # Handle reserved keywords
+            key_is_reserved = k.upper() in reserved_keywords
+            attr_name = f"#{k}" if key_is_reserved else k
+            if key_is_reserved:
+                expr_attr_names[f"#{k}"] = k
+
+            update_expr.append(f"{attr_name} = :{k}")
+            
+            # Infer DynamoDB type
+            if isinstance(v, str):
+                expr_attr_values[f":{k}"] = {'S': v}
+            elif isinstance(v, bool):
+                expr_attr_values[f":{k}"] = {'BOOL': v}
+            elif isinstance(v, (int, float)):
+                expr_attr_values[f":{k}"] = {'N': str(v)}
+            elif isinstance(v, list):
+                expr_attr_values[f":{k}"] = {'L': [{'S': str(item)} for item in v]}
+            else:
+                raise ValueError(f"Unsupported type for DynamoDB: {type(v)} in field '{k}'")
+
         if update_expr:
             update_expression = "SET " + ", ".join(update_expr)
-            dynamodb_client.update_item(
-                TableName=DYNAMODB_TABLE,
-                Key={'contract_id': {'S': contract_id}},
-                UpdateExpression=update_expression,
-                ExpressionAttributeValues={k: {'S': str(v)} for k, v in expr_attr_values.items()}
-            )
-        # Return updated contract
+
+            update_kwargs = {
+                'TableName': DYNAMODB_TABLE,
+                'Key': {'contract_id': {'S': contract_id}},
+                'UpdateExpression': update_expression,
+                'ExpressionAttributeValues': expr_attr_values
+            }
+
+            if expr_attr_names:
+                update_kwargs['ExpressionAttributeNames'] = expr_attr_names
+
+            dynamodb_client.update_item(**update_kwargs)
+
+        # --- Step 3: Return updated contract ---
         return get_contract(contract_id)
+
     except Exception as e:
-        logger.error(f"Error updating contract: {str(e)}")
+        logger.error(f"Error updating contract {contract_id}: {str(e)}")
         raise
+
 
 
 def delete_contract(contract_id: str) -> None:

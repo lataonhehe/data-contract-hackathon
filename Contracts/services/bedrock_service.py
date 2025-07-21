@@ -55,3 +55,42 @@ def generate_contract_with_bedrock(request: str) -> str:
     except Exception as e:
         logger.error(f"Error generating contract: {str(e)}")
         raise Exception(f"Error generating contract: {str(e)}") 
+
+def stream_contract_with_bedrock(request: str):
+    """
+    Stream YAML contract generation using Amazon Bedrock Claude 3 Sonnet
+    Args:
+        request: Natural language request describing data sharing requirements
+    Yields:
+        Chunks of generated YAML contract as they are produced
+    Raises:
+        Exception: If Bedrock API call fails
+    """
+    try:
+        request_body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 2000,
+            "temperature": 0.3,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"{SYSTEM_MESSAGE}\n\nUser request: {request}"
+                }
+            ]
+        }
+        logger.info(f"Invoking Bedrock model (stream): {BEDROCK_MODEL_ID}")
+        response = bedrock_runtime.invoke_model_with_response_stream(
+            modelId=BEDROCK_MODEL_ID,
+            body=json.dumps(request_body),
+            contentType="application/json"
+        )
+        for event in response["body"]:
+            chunk = json.loads(event["chunk"]["bytes"])
+            if chunk["type"] == "content_block_delta":
+                yield chunk["delta"].get("text", "")
+    except (ClientError, BotoCoreError) as e:
+        logger.error(f"Bedrock API error (stream): {str(e)}")
+        raise Exception(f"Failed to stream contract with Bedrock: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error streaming contract: {str(e)}")
+        raise Exception(f"Error streaming contract: {str(e)}") 
